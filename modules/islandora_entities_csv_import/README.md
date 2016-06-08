@@ -9,7 +9,7 @@ This module is for adding person entities to Islandora using a .csv file.
 This module requires the following modules/libraries:
 * [Islandora](https://github.com/islandora/islandora)
 * [Islandora Basic Collection](https://github.com/Islandora/islandora_solution_pack_collection)
-* [islandora_entities](https://github.com/Islandora/islandora_solution_pack_entities)
+* [Islandora Entities](https://github.com/Islandora/islandora_solution_pack_entities)
 
 ## Installation
 
@@ -17,15 +17,15 @@ Install as usual, see [this](https://drupal.org/documentation/install/modules-th
 
 ## Configuration
 
-CSV's must be properly prepared.  Any comma within a field must be replaced with
-a double pipe ie - 'Nursing, Department of' must be replaced with
-'Nursing|| Department of'
+Prepare a comma-delimited CSV file using the column names below. Only columns with names in the list will be processed; 
+all others will be ignored. Any comma within a field must be replaced with a double pipe ie - 'Nursing, Department of' 
+must be replaced with 'Nursing|| Department of'.
 
-If multiple arguments are supplied within a single column, they must be
-separated with a ~  ie meat~cheese~pickles
-If a column in a CSV is to be processed it must have a header from the following
-list.
+Multiple arguments within one column can be separated with a tilde (~). However, this may yield unexpected results 
+(missing XML attributes, improper nesting) if used outside the following fields: FAX, PHONE, EMAIL, POSITION. 
 
+
+```
 STATUS
 POSITION
 EMAIL
@@ -52,6 +52,49 @@ END_DATE
 ROOM_NUMBER
 BUILDING
 CAMPUS
+```
+
+This will be transformed into the following MADS record:
+
+```xml
+<mads xmlns="http://www.loc.gov/mads/v2" xmlns:mads="http://www.loc.gov/mads/v2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <authority>
+        <name type="personal">
+            <namePart type="given">[GIVEN_NAME]</namePart>
+            <namePart type="family">[FAMILY_NAME]</namePart>
+            <namePart type="termsOfAddress">[TERM_OF_ADDRESS]</namePart>
+            <namePart type="date">[NAME_DATE]</namePart>
+        </name>
+        <titleInfo>
+            <title>[DISPLAY_NAME]</title>
+        </titleInfo>
+    </authority>
+    <affiliation>
+        <organization>[DEPARTMENT]</organization>
+        <position>[POSITION]</position>
+        <address>
+		<email>[EMAIL]</email>
+		<phone>[PHONE]</phone>
+		<fax>[FAX]</fax>
+		<street>[STREET]</street>
+		<city>[CITY]</city>
+		<state>[STATE]</state>
+		<country>[COUNTRY]</country>
+		<postcode>[POSTCODE]</postcode>
+		<start_date>[START_DATE]</start_date>
+		<end_date>[END_DATE]</end_date>
+	</address>
+    </affiliation>
+    <note type="address">[ROOM_NUMBER] [BUILDING] [CAMPUS]</note>
+    <identifier type="u1">[IDENTIFIER]</identifier>
+    <note type="status">[STATUS]</note>
+</mads>
+```
+
+## Documentation
+
+Further documentation for this module is available at [our wiki](https://wiki.duraspace.org/display/ISLANDORA/Entities+Solution+Pack).
 
 ## Troubleshooting/Issues
 
@@ -64,7 +107,7 @@ Having problems or solved a problem? Check out the Islandora google groups for a
 
 Current maintainers:
 
-* [Alan Stanley](https://github.com/ajstanley)
+* [Rosie Le Faive](https://github.com/rosiel)
 
 ## Development
 
