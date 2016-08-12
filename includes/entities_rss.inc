@@ -58,6 +58,7 @@ function islandora_entities_rss($pid) {
  *   The string formatted RSS items.
  */
 function islandora_entities_get_rss_related($identifier, $type) {
+  module_load_include('inc', 'islandora_entities', 'includes/utilities');
   global $base_url;
   $mappings = array(
     'citations' => 'ir:citationCModel',
@@ -67,6 +68,7 @@ function islandora_entities_get_rss_related($identifier, $type) {
   $params = array(
     'fl' => 'dc.title, PID, dc.description',
   );
+  $params = array_merge($params, islandora_entities_get_solr_filters());
   $query = "+RELS_EXT_hasModel_uri_mt:\"$content_model\" +mods_name_personal_displayForm_mt:\"($identifier)\"";
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));

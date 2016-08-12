@@ -136,6 +136,13 @@ function islandora_entities_get_related($identifier, $title, $type) {
     'fl' => 'dc.title, PID',
   );
 
+  //module_load_include('inc', 'islandora_solr_search', 'includes/utilities');
+  //$solr_build = new IslandoraSolrQueryProcessor();
+  //$subparams = $params;
+  //$solr_build->buildQuery($query, $subparams);
+  //drupal_set_message(var_dump($solr_build->solrParams));
+  $params = array_merge($params, islandora_entities_get_solr_filters());
+
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
   $solr->setCreateDocuments(FALSE);
@@ -210,6 +217,7 @@ function islandora_entities_get_related_pids($identifier, $title, $type) {
   $params = array(
     'fl' => 'dc.title, mods_name_personal_displayForm_mt, PID',
   );
+  $params = array_merge($params, islandora_entities_get_solr_filters());
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
@@ -276,4 +284,29 @@ function islandora_entities_add_autocompletes_to_thesis_form(&$form) {
       $form['granter'][$key]['department']['#autocomplete_path'] = 'islandora/entities/autocomplete/department';
     }
   }
+}
+
+function islandora_entities_get_solr_filters() {
+
+  $filter_params = array();
+
+  // Restrict results based on specified namespaces.
+  $namespace_list = trim(variable_get('islandora_solr_namespace_restriction', ''));
+  if ($namespace_list) {
+    $namespaces = preg_split('/[,|\s]/', $namespace_list);
+    $namespace_array = array();
+    foreach (array_filter($namespaces) as $namespace) {
+      $namespace_array[] = "PID:$namespace\:*";
+    }
+    $filter_params['fq'][] = implode(' OR ', $namespace_array);
+  }
+
+
+  // get base filter to filter by site
+  $base_filters = preg_split("/\\r\\n|\\n|\\r/", variable_get('islandora_solr_base_filter', ''), -1, PREG_SPLIT_NO_EMPTY);
+  if (!empty($base_filters)) {
+    $filter_params['fq'] = $base_filters;
+  }
+
+  return $filter_params;
 }

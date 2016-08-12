@@ -60,6 +60,7 @@ function islandora_entities_query_entities_callback($type) {
  *   array of all candidates
  */
 function islandora_entities_autocomplete($type) {
+  module_load_include('inc', 'islandora_entities', 'includes/utilities');
 
   $mappings = array(
     'scholar' => array(
@@ -89,6 +90,7 @@ function islandora_entities_autocomplete($type) {
   $params = array(
     'fl' => array($mappings[$type]['title'], 'PID'),
   );
+  $params = array_merge($params, islandora_entities_get_solr_filters());
   $query = "$qualifier AND " . 'RELS_EXT_hasModel_uri_mt:"' . $mappings[$type]['cmodel'] . '"';
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
