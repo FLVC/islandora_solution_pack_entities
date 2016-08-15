@@ -317,13 +317,15 @@ function islandora_entities_attach_element($dom, $element_name, $parent_node, $c
  *   Contents of textfield being completed
  */
 function islandora_entities_get_collection_autocomplete($string = '') {
+  module_load_include('inc', 'islandora_entities', 'includes/utilities');
   $string = str_replace(':', '\:', $string);
   $params = array(
     'fl' => array('dc.title, PID'),
   );
+  $params = array_merge($params, islandora_entities_get_solr_filters());
   $string = $string ? " +dc.title:$string*" : '';
   $query = '(+RELS_EXT_hasModel_uri_ms:"info:fedora/islandora:collectionCModel"' . $string . ')';
-  $query .= '(+RELS_EXT_hasModel_uri_ms:"info:fedora/islandora:collectionCModel"' . str_replace('dc.title', 'PID', $string) . ')';
+  $query .= ' OR (+RELS_EXT_hasModel_uri_ms:"info:fedora/islandora:collectionCModel"' . str_replace('dc.title', 'PID', $string) . ')';
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
   $solr->setCreateDocuments(FALSE);

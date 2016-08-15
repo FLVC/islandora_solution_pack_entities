@@ -302,10 +302,10 @@ function islandora_entities_get_solr_filters() {
   }
 
 
-  // get base filter to filter by site
+  // get base filters
   $base_filters = preg_split("/\\r\\n|\\n|\\r/", variable_get('islandora_solr_base_filter', ''), -1, PREG_SPLIT_NO_EMPTY);
-  if (!empty($base_filters)) {
-    $filter_params['fq'] = $base_filters;
+  foreach ($base_filters as $base_filter) {
+    $filter_params['fq'][] = $base_filter;
   }
 
   return $filter_params;
