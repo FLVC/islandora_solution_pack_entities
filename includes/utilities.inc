@@ -131,16 +131,15 @@ function islandora_entities_get_related($identifier, $title, $type) {
       'islandora_entities_thesis_base_query',
       '+RELS_EXT_hasModel_uri_mt:"ir:thesisCModel"'),
   );
-  $query = "+mods_name_personal_displayForm_mt:\"($identifier)\"  {$base_query[$type]}";
+  $entities_linking_field = variable_get(
+      'islandora_entities_linking_content_solr_field', 'mods_name_personal_displayForm_mt'
+  );
+  $query = "+{$entities_linking_field}:\"($identifier)\"  {$base_query[$type]}";
+  //$query = "+mods_name_personal_displayForm_mt:\"($identifier)\"  {$base_query[$type]}";
   $params = array(
     'fl' => 'dc.title, PID',
   );
 
-  //module_load_include('inc', 'islandora_solr_search', 'includes/utilities');
-  //$solr_build = new IslandoraSolrQueryProcessor();
-  //$subparams = $params;
-  //$solr_build->buildQuery($query, $subparams);
-  //drupal_set_message(var_dump($solr_build->solrParams));
   $params = array_merge($params, islandora_entities_get_solr_filters());
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
@@ -212,10 +211,14 @@ function islandora_entities_get_related_pids($identifier, $title, $type) {
       'islandora_entities_thesis_base_query',
       '+RELS_EXT_hasModel_uri_mt:"ir:thesisCModel"'),
   );
-  $query = "+mods_name_personal_displayForm_mt:\"($identifier)\"  {$base_query[$type]}";
+  $entities_linking_field = variable_get(
+      'islandora_entities_linking_content_solr_field', 'mods_name_personal_displayForm_mt'
+  );
+  $query = "+{$entities_linking_field}:\"($identifier)\"  {$base_query[$type]}";
+  //$query = "+mods_name_personal_displayForm_mt:\"($identifier)\"  {$base_query[$type]}";
 
   $params = array(
-    'fl' => 'dc.title, mods_name_personal_displayForm_mt, PID',
+    'fl' => "dc.title, {$entities_linking_field}, PID",
   );
   $params = array_merge($params, islandora_entities_get_solr_filters());
 
@@ -234,7 +237,7 @@ function islandora_entities_get_related_pids($identifier, $title, $type) {
     $results[$choice['PID']] = array(
       'PID' => $choice['PID'],
       'title' => $choice['dc.title'],
-      'authors' => $choice['mods_name_personal_displayForm_mt'],
+      'authors' => $choice[$entities_linking_field],
     );
   }
   return $results;

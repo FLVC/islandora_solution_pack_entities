@@ -69,7 +69,11 @@ function islandora_entities_get_rss_related($identifier, $type) {
     'fl' => 'dc.title, PID, dc.description',
   );
   $params = array_merge($params, islandora_entities_get_solr_filters());
-  $query = "+RELS_EXT_hasModel_uri_mt:\"$content_model\" +mods_name_personal_displayForm_mt:\"($identifier)\"";
+  $entities_linking_field = variable_get(
+      'islandora_entities_linking_content_solr_field', 'mods_name_personal_displayForm_mt'
+  );
+  $query = "+RELS_EXT_hasModel_uri_mt:\"$content_model\" +{$entities_linking_field}:\"($identifier)\"";
+  //$query = "+RELS_EXT_hasModel_uri_mt:\"$content_model\" +mods_name_personal_displayForm_mt:\"($identifier)\"";
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
