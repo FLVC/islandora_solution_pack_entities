@@ -67,13 +67,14 @@ function islandora_entities_read_csv($path) {
  *   PID of collection to hold new objects.
  */
 function islandora_entities_build_scholar_object($scholar, $collection_pid) {
-
+  global $user;
   $mads = islandora_entities_build_mads($scholar);
   $tuque = new IslandoraTuque();
   $repository = $tuque->repository;
   $fedora_object = $repository->constructObject('islandora');
   $fedora_object->label = isset($scholar['DISPLAY_NAME']) ? $scholar['DISPLAY_NAME'] : 'Member';
-  $fedora_object->owner = 'admin';
+  //$fedora_object->owner = 'admin';
+  $fedora_object->owner = isset($user->name) ? $user->name : 'admin';
   $datastream = $fedora_object->constructDatastream('MADS', 'M');
   $datastream->label = 'MADS';
   $datastream->mimetype = 'application/xml';
