@@ -54,7 +54,7 @@
               <type>fieldset</type>
               <access>TRUE</access>
               <required>FALSE</required>
-              <title>Identity information</title>
+              <title>Indentity information</title>
               <tree>TRUE</tree>
             </properties>
             <children>
