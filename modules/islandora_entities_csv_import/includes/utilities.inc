@@ -67,11 +67,24 @@ function islandora_entities_read_csv($path) {
  *   PID of collection to hold new objects.
  */
 function islandora_entities_build_scholar_object($scholar, $collection_pid) {
+  module_load_include('inc', 'islandora', 'includes/utilities');
   global $user;
   $mads = islandora_entities_build_mads($scholar);
   $tuque = new IslandoraTuque();
   $repository = $tuque->repository;
-  $fedora_object = $repository->constructObject('islandora');
+  //$fedora_object = $repository->constructObject('islandora');
+  // default to site root namespace, then check collection policy
+  $namespace = islandora_get_namespace(variable_get('islandora_repository_pid', 'islandora:root'));
+  $collection_policies =& drupal_static(__METHOD__, array());
+  if (isset($collection_policies[$collection_pid])) {
+    $info = $collection_policies[$collection_pid]->getContentModels();
+    $applicable = array_intersect_key($info, drupal_map_assoc('islandora:personCModel'));
+    if ($applicable) {
+      $first_applicable = reset($applicable);
+      $namespace = $first_applicable['namespace'];
+    }
+  }
+  $fedora_object = $repository->constructObject($namespace);
   $fedora_object->label = isset($scholar['DISPLAY_NAME']) ? $scholar['DISPLAY_NAME'] : 'Member';
   //$fedora_object->owner = 'admin';
   $fedora_object->owner = isset($user->name) ? $user->name : 'admin';
