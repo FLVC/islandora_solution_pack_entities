@@ -143,6 +143,14 @@ function islandora_entities_build_mads($scholar) {
     $identifier = islandora_entities_attach_element($dom, "identifier", $root, $scholar['IDENTIFIER']);
     $identifier->setAttribute('type', 'u1');
   }
+  if (isset($scholar['LOCAL_IDENTIFIER'])) {
+    $identifier = islandora_entities_attach_element($dom, "identifier", $root, $scholar['LOCAL_IDENTIFIER']);
+    $identifier->setAttribute('type', 'local');
+  }
+  if (isset($scholar['ORCID_IDENTIFIER'])) {
+    $identifier = islandora_entities_attach_element($dom, "identifier", $root, $scholar['ORCID_IDENTIFIER']);
+    $identifier->setAttribute('type', 'orcid');
+  }
   if (isset($scholar['STATUS'])) {
     $status = islandora_entities_attach_element($dom, 'note', $root, $scholar['STATUS']);
     $status->setAttribute('type', 'status');
