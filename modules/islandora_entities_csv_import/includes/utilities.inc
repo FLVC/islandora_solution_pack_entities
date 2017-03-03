@@ -222,18 +222,23 @@ function islandora_entities_add_affiliation($dom, $scholar) {
   $affiliation_parts = array(
     'POSITION',
     'DEPARTMENT',
-  );
-  $address_parts = array(
     'EMAIL',
     'PHONE',
     'FAX',
+    'START_DATE',
+    'END_DATE',
+  );
+  $address_parts = array(
+//    'EMAIL',
+//    'PHONE',
+//    'FAX',
     'STREET',
     'CITY',
     'STATE',
     'COUNTRY',
     'POSTCODE',
-    'START_DATE',
-    'END_DATE',
+//    'START_DATE',
+//    'END_DATE',
   );
   foreach ($address_parts as $address_part) {
     if (isset($scholar[$address_part])) {
@@ -256,6 +261,23 @@ function islandora_entities_add_affiliation($dom, $scholar) {
   if (isset($affiliations['POSITION'])) {
     islandora_entities_attach_element($dom, "position", $affiliation, $affiliations['POSITION']);
   }
+  if (isset($affiliations['EMAIL'])) {
+    islandora_entities_attach_element($dom, "email", $affiliation, $affiliations['EMAIL']);
+  }
+  if (isset($affiliations['PHONE'])) {
+    islandora_entities_attach_element($dom, "phone", $affiliation, $affiliations['PHONE']);
+  }
+  if (isset($affiliations['FAX'])) {
+    islandora_entities_attach_element($dom, "fax", $affiliation, $affiliations['FAX']);
+  }
+  if (isset($affiliations['START_DATE'])) {
+    $line = islandora_entities_attach_element($dom, "dateValid", $affiliation, $affiliations['START_DATE']);
+    $line->setAttribute('point', 'start');
+  }
+  if (isset($affiliations['END_DATE'])) {
+    $line = islandora_entities_attach_element($dom, "dateValid", $affiliation, $affiliations['END_DATE']);
+    $line->setAttribute('point', 'end');
+  }
   if (count($address) > 0) {
     $address = islandora_entities_attach_element($dom, "address", $affiliation);
     foreach ($address_parts as $item) {
@@ -264,13 +286,13 @@ function islandora_entities_add_affiliation($dom, $scholar) {
         islandora_entities_attach_element($dom, $nodename, $address, $scholar[$item]);
       }
     }
-    $points = array('START_DATE', 'END_DATE');
-    foreach ($points as $point) {
-      if (isset($affiliation_parts[$point])) {
-        $line = islandora_entities_attach_element($dom, "dateValid", $address, $affiliation_parts[$point]);
-        $line->setAttribute('point', $point);
-      }
-    }
+    //$points = array('START_DATE', 'END_DATE');
+    //foreach ($points as $point) {
+    //  if (isset($affiliation_parts[$point])) {
+    //    $line = islandora_entities_attach_element($dom, "dateValid", $address, $affiliation_parts[$point]);
+    //    $line->setAttribute('point', $point);
+    //  }
+    //}
   }
 }
 
