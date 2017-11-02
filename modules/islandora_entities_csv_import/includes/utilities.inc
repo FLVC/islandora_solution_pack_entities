@@ -135,6 +135,11 @@ function islandora_entities_build_mads($scholar) {
   $value = $dom->createTextNode("http://www.w3.org/1999/xlink");
   $xlink->appendChild($value);
 
+  $xsi_schema = $dom->createAttribute('xsi:schemaLocation');
+  $root->appendChild($xsi_schema);
+  $value = $dom->createTextNode("http://www.loc.gov/mads/v2 http://www.loc.gov/standards/mads/mads-2-1.xsd");
+  $xsi_schema->appendChild($value);
+
   islandora_entities_add_authority($dom, $scholar);
   islandora_entities_add_affiliation($dom, $scholar);
   islandora_entities_add_building_address($dom, $scholar);
