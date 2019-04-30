@@ -6,14 +6,59 @@
  */
 
 /**
+ * Retrieves collection info.
+ *
+ * @param string $collection_pid
+ *   A PID.
+ *
+ * @return array|bool
+ *   An associative array containing the following info:
+ *   - pid: The collection PID, or FALSE if not a collection object.
+ *   - cmodels: The content models as returned by
+ *     `CollectionPolicy::getContentModels()`, or FALSE if no
+ *     `COLLECTION_POLICY` datastream is present.
+ *   or FALSE if the object with given PID does not exist.
+ */
+function islandora_entities_import_get_collection_info($collection_pid) {
+  $ret = array('pid' => $collection_pid, 'cmodels' => FALSE);
+  $collection_object = islandora_object_load($collection_pid);
+  if ($collection_object) {
+    if (!in_array('islandora:collectionCModel', $collection_object->models)) {
+      // Not a collection object.
+      $ret['pid'] = FALSE;
+      return $ret;
+    }
+    elseif (isset($collection_object['COLLECTION_POLICY'])) {
+      $collection_policy = new CollectionPolicy($collection_object['COLLECTION_POLICY']->content);
+      // Get the associative array of content models, mapping each CModel PID
+      // to an associative array containing:
+      // - pid: The CModel PID.
+      // - name: The CModel name.
+      // - namespace: The namespace to use for this CModel in this collection.
+      $ret['cmodels'] = $collection_policy->getContentModels();
+      return $ret;
+    }
+    else {
+      // No `COLLECTION_POLICY`; this should never happen.
+      return $ret;
+    }
+  }
+  // Object does not exist.
+  return FALSE;
+}
+
+/**
  * Created Entities from supplied csv file.
  *
  * @param url $path
  *   Path to file
  * @param string $collection_pid
  *   PID of collection where created objects are to be stored.
+ * @param string $namespace
+ *   The namespace the newly created objects should obtain. Defaults to
+ *   'islandora'.
  */
-function islandora_entities_import_csv_batch($path, $collection_pid) {
+function islandora_entities_import_csv_batch($path, $collection_pid, $namespace = 'islandora') {
   $scholars = islandora_entities_read_csv($path);
   $batch = array(
     'title' => t("Creating Scholar Objects"),
@@ -24,7 +69,7 @@ function islandora_entities_import_csv_batch($path, $collection_pid) {
   foreach ($scholars as $scholar) {
     $batch['operations'][] = array(
       'islandora_entities_build_scholar_object',
-      array($scholar, $collection_pid),
+      array($scholar, $collection_pid, $namespace),
     );
   }
   batch_set($batch);
@@ -65,29 +110,19 @@ function islandora_entities_read_csv($path) {
  *   Header => value pairs representing date to be converted to MADS record
  * @param string $collection_pid
  *   PID of collection to hold new objects.
+ * @param string $namespace
+ *   The namespace the object to be created should obtain. Defaults to
+ *   'islandora'.
  */
-function islandora_entities_build_scholar_object($scholar, $collection_pid) {
-  module_load_include('inc', 'islandora', 'includes/utilities');
+function islandora_entities_build_scholar_object($scholar, $collection_pid, $namespace = 'islandora') {
   global $user;
   $mads = islandora_entities_build_mads($scholar);
   $tuque = new IslandoraTuque();
   $repository = $tuque->repository;
-  //$fedora_object = $repository->constructObject('islandora');
-  // default to site root namespace, then check collection policy
-  $namespace = islandora_get_namespace(variable_get('islandora_repository_pid', 'islandora:root'));
-  $collection_policies =& drupal_static(__METHOD__, array());
-  if (isset($collection_policies[$collection_pid])) {
-    $info = $collection_policies[$collection_pid]->getContentModels();
-    $applicable = array_intersect_key($info, drupal_map_assoc('islandora:personCModel'));
-    if ($applicable) {
-      $first_applicable = reset($applicable);
-      $namespace = $first_applicable['namespace'];
-    }
-  }
   $fedora_object = $repository->constructObject($namespace);
-  $fedora_object->label = isset($scholar['DISPLAY_NAME']) ? $scholar['DISPLAY_NAME'] : 'Member';
-  //$fedora_object->owner = 'admin';
-  $fedora_object->owner = isset($user->name) ? $user->name : 'admin';
+  $label = isset($scholar['DISPLAY_NAME']) ? trim($scholar['DISPLAY_NAME']) : '';
+  $fedora_object->label = !empty($label) ? $label : 'Member';
+  $fedora_object->owner = isset($user->name) ? $user->name : $fedora_object->owner;
   $datastream = $fedora_object->constructDatastream('MADS', 'M');
   $datastream->label = 'MADS';
   $datastream->mimetype = 'application/xml';
@@ -366,28 +401,26 @@ function islandora_entities_attach_element($dom, $element_name, $parent_node, $c
  *   Contents of textfield being completed
  */
 function islandora_entities_get_collection_autocomplete($string = '') {
-  module_load_include('inc', 'islandora_entities', 'includes/utilities');
-  $string = str_replace(':', '\:', $string);
-  $params = array(
-    'fl' => array('dc.title, PID'),
-  );
-  $params = array_merge($params, islandora_entities_get_solr_filters());
-  $string = $string ? " +dc.title:$string*" : '';
-  $query = '(+RELS_EXT_hasModel_uri_ms:"info:fedora/islandora:collectionCModel"' . $string . ')';
-  $query .= ' OR (+RELS_EXT_hasModel_uri_ms:"info:fedora/islandora:collectionCModel"' . str_replace('dc.title', 'PID', $string) . ')';
-  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
-  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
-  $solr->setCreateDocuments(FALSE);
-  try {
-    $results = $solr->search($query, 0, 1000, $params);
-    $json = json_decode($results->getRawResponse(), TRUE);
-  }
-  catch (Exception $e) {
-    watchdog_exception('Islandora Entities', $e, 'Got an exception while searching entities for callback.', array(), WATCHDOG_ERROR);
-  }
   $list = array();
-  foreach ($json['response']['docs'] as $choice) {
-    $list[$choice['PID']] = $choice['dc.title'][0] . " ~ " . $choice['PID'];
+  if ($string) {
+    $string = str_replace(':', '\:', $string);
+    $query = "RELS_EXT_hasModel_uri_ms:\"info:fedora/islandora:collectionCModel\" AND (dc.title:{$string}* OR PID:{$string}*)";
+    $qp = new IslandoraSolrQueryProcessor();
+    $qp->buildQuery($query);
+    $qp->solrParams['fl'] = 'dc.title, PID';
+    $qp->executeQuery(FALSE);
+    try {
+      $results = $qp->islandoraSolrResult['response']['objects'];
+    }
+    catch (Exception $e) {
+      watchdog_exception('Islandora Entities', $e, 'Got an exception while searching entities for callback.', array(), WATCHDOG_ERROR);
+      $results = array();
+    }
+    if ($results) {
+      foreach ($results as $choice) {
+        $list[$choice['PID']] = $choice['solr_doc']['dc.title'][0] . " ~ " . $choice['PID'];
+      }
+    }
   }
 
   drupal_json_output($list);

@@ -6,9 +6,9 @@
  */
 
 /**
- * Implements hook_preprocess().
+ * Implements template_preprocess_HOOK().
  */
-function islandora_entities_preprocess_islandora_person(array &$variables) {
+function template_preprocess_islandora_person(array &$variables) {
   module_load_include('inc', 'islandora_entities', 'includes/utilities');
   module_load_include('inc', 'islandora', 'includes/metadata');
   module_load_include('inc', 'islandora_entities', 'includes/entities_rss');
@@ -22,6 +22,10 @@ function islandora_entities_preprocess_islandora_person(array &$variables) {
   if ($object['MADS']) {
     $mads = $object['MADS']->content;
     $simplexml = simplexml_load_string($mads);
+    // $variables['biography'] is a legacy feature using hard-coded
+    // xml paths. The default template now uses $variables['description'].
+    // This is kept for backwards compatibility with existing custom
+    // templates that may use it.
     $notes = $simplexml->note;
     foreach ($notes as $note) {
       if ($note['type'] == 'history') {
@@ -106,6 +110,9 @@ function islandora_entities_preprocess_islandora_person(array &$variables) {
   if ($object['TN']) {
     $variables['tn'] = url("islandora/object/{$object->id}/datastream/TN/view");
   }
+  $variables['img_alt'] = isset($object->label) ? $object->label : $object->id;
+  $description = islandora_retrieve_description_markup($object);
+  $variables['description'] = $description;
   $variables['metadata'] = islandora_retrieve_metadata_markup($object, TRUE);
 }
 
@@ -121,25 +128,26 @@ function islandora_entities_preprocess_islandora_person(array &$variables) {
  *   Department members
  */
 function islandora_entities_get_dept_members($dept, $pid) {
-  $params = array(
-    'fl' => array('MADS_title_ms PID'),
-  );
+  module_load_include('inc', 'islandora_solr', 'includes/query_processor');
   $query = "MADS_organization_ms:\"$dept\" AND -PID:\"$pid\"";
-  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
-  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
-  $solr->setCreateDocuments(FALSE);
+  $qp = new IslandoraSolrQueryProcessor();
+  $qp->buildQuery($query);
+  $qp->solrParams['fl'] = "MADS_title_ms, PID";
+  $qp->executeQuery(FALSE);
   try {
-    $results = $solr->search($query, 0, 1000, $params);
-    $json = json_decode($results->getRawResponse(), TRUE);
+    $results = $qp->islandoraSolrResult['response']['objects'];
   }
   catch (Exception $e) {
     watchdog_exception('Islandora Entities', $e, 'Got an exception while searching entities for callback.', array(), WATCHDOG_ERROR);
+    $results = array();
   }
   $colleages = array();
-  foreach ($json['response']['docs'] as $choice) {
-    if (isset($choice['MADS_title_ms'])) {
-      foreach ($choice['MADS_title_ms'] as $candidate) {
-        $colleages[$choice['PID']] = $candidate;
+  if ($results) {
+    foreach ($results as $choice) {
+      if (isset($choice['solr_doc']['MADS_title_ms'])) {
+        foreach ($choice['solr_doc']['MADS_title_ms'] as $candidate) {
+          $colleages[$choice['PID']] = $candidate;
+        }
       }
     }
   }
@@ -147,15 +155,20 @@ function islandora_entities_get_dept_members($dept, $pid) {
 }
 
 /**
- * Implements hook_preprocess().
+ * Implements template_preprocess_HOOK().
  */
-function islandora_entities_preprocess_islandora_dept(array &$variables) {
+function template_preprocess_islandora_dept(array &$variables) {
   module_load_include('inc', 'islandora', 'includes/metadata');
   $module_path = drupal_get_path('module', 'islandora');
   drupal_add_css("$module_path/css/islandora.objects.css");
   $object = $variables['object'];
   $variables['metadata'] = islandora_retrieve_metadata_markup($object, TRUE);
+
   if ($object['TN']) {
-    $variables['tn'] = url("islandora/object/{$object->id}/datastream/TN/view");
+    $variables['tn']
+      = url("islandora/object/{$object->id}/datastream/TN/view");
+    $variables['tn_alt'] = t("Thumbnail Image");
+    $variables['tn_id']
+      = drupal_html_id("islandora_solution_pack_entity_dept_thumbnail");
   }
 }
